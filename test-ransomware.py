@@ -20,4 +20,3 @@ print(key)
 with open("Wkey.key", "wb") as Wkey:
     Wkey.write(key)
 
-time.sleep(10)
